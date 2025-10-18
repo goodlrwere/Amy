@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+  <meta charset="UTF-8" />
+  <title>أدوات عرض وتحميل أكواد موقع</title>
+  <style>
+    body {
+      font-family: Arial;
+      padding: 20px;
+      direction: rtl;
+      background: #f7f7f7;
+    }
+    input, textarea, button {
+      font-size: 16px;
+      margin-top: 10px;
+    }
+    textarea {
+      width: 100%;
+      height: 300px;
+      direction: ltr;
+    }
+    #langUsed {
+      margin-top: 20px;
+      background: #fff3cd;
+      padding: 10px;
+      border: 1px solid #ffeeba;
+      border-radius: 5px;
+    }
+    .code-buttons {
+      margin-top: 10px;
+    }
+    .code-buttons button {
+      margin: 3px;
+    }
+  </style>
+</head>
+<body>
+
+  <h2>📥 أدخل رابط الموقع</h2>
+  <input type="text" id="urlInput" placeholder="مثال: https://example.com" style="width:100%; padding:10px;" />
+  <button onclick="fetchCode()">عرض الكود</button>
+  <button onclick="copyCode()">📋 نسخ كل الكود</button>
+  <button onclick="downloadCode()">💾 تحميل كل الكود (HTML)</button>
+
+  <h3>🔍 الكود البرمجي الكامل:</h3>
+  <textarea id="result" readonly></textarea>
+
+  <div id="langUsed">
+    <strong>اللغات المكتشفة:</strong> <span id="langs"></span>
+    <div class="code-buttons" id="codeButtons"></div>
+  </div>
+
+  <script>
+    let allCode = "";
+
+    function fetchCode() {
+      const url = document.getElementById('urlInput').value.trim();
+      if (!url) {
+        alert("يرجى إدخال رابط الموقع!");
+        return;
+      }
+      const encodedURL = encodeURIComponent(url);
+      const proxyURL = `https://api.allorigins.win/raw?url=${encodedURL}`;
+      
+      fetch(proxyURL)
+        .then(response => {
+          if (!response.ok) throw new Error("تعذر تحميل الموقع.");
+          return response.text();
+        })
+        .then(data => {
+          allCode = data;
+          document.getElementById('result').value = data;
+          detectAndExtractLanguages(data);
+        })
+        .catch(error => {
+          document.getElementById('result').value = "حدث خطأ: " + error.message;
+          document.getElementById('langs').innerText = "";
+          document.getElementById('codeButtons').innerHTML = "";
+        });
+    }
+
+    function copyCode() {
+      const textarea = document.getElementById('result');
+      textarea.select();
+      document.execCommand("copy");
+      alert("✅ تم نسخ الكود إلى الحافظة!");
+    }
+
+    function downloadCode() {
+      const blob = new Blob([allCode], {type: "text/html"});
+      const link = document.createElement("a");
+      link.href = URL.createObjectURL(blob);
+      link.download = "source-code.html";
+      link.click();
+    }
+
+    function detectAndExtractLanguages(code) {
+      const langsFound = [];
+      const parts = {};
+
+      // HTML
+      if (code.includes("<html") || code.includes("<!DOCTYPE")) {
+        langsFound.push("HTML");
+        parts["HTML"] = code;
+      }
+
+      // CSS
+      const cssMatches = code.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+      if (cssMatches) {
+        langsFound.push("CSS");
+        parts["CSS"] = cssMatches.map(tag => tag.replace(/<style[^>]*>|<\/style>/gi, '')).join("\n");
+      }
+
+      // JavaScript
+      const jsMatches = code.match(/<script[^>]*>([\s\S]*?)<\/script>/gi);
+      if (jsMatches) {
+        langsFound.push("JavaScript");
+        parts["JavaScript"] = jsMatches.map(tag => tag.replace(/<script[^>]*>|<\/script>/gi, '')).join("\n");
+      }
+
+      // PHP
+      const phpMatches = code.match(/<\?php[\s\S]*?\?>/gi);
+      if (phpMatches) {
+        langsFound.push("PHP");
+        parts["PHP"] = phpMatches.join("\n");
+      }
+
+      // Python (مبسط)
+      const pyMatches = code.match(/(import\s+\w+|def\s+\w+|\ sprint\s*\(|flask|django)/gi);
+      if (pyMatches) {
+        langsFound.push("Python");
+        parts["Python"] = pyMatches.join("\n...") + "\n(قد توجد ملفات Python على الخادم)";
+      }
+
+      // عرض اللغات
+      document.getElementById('langs').innerText = langsFound.length ? langsFound.join(", ") : "لم يتم كشف لغات برمجية محددة.";
+
+      // إنشاء أزرار تحميل ونسخ لكل لغة
+      const buttonsDiv = document.getElementById('codeButtons');
+      buttonsDiv.innerHTML = "";
+
+      langsFound.forEach(lang => {
+        const downloadBtn = document.createElement("button");
+        downloadBtn.textContent = `⬇️ تحميل ${lang}`;
+        downloadBtn.onclick = () => {
+          const blob = new Blob([parts[lang]], {type: "text/plain"});
+          const link = document.createElement("a");
+          link.href = URL.createObjectURL(blob);
+          link.download = `${lang.toLowerCase()}.txt`;
+          link.click();
+        };
+
+        const copyBtn = document.createElement("button");
+        copyBtn.textContent = `📋 نسخ ${lang}`;
+        copyBtn.onclick = () => {
+          navigator.clipboard.writeText(parts[lang]);
+          alert(`✅ تم نسخ كود ${lang}`);
+        };
+
+        buttonsDiv.appendChild(downloadBtn);
+        buttonsDiv.appendChild(copyBtn);
+      });
+    }
+    
+  </script>
+
+</body>
+  </html>
